@@ -162,7 +162,7 @@ def get_training_rmse(logfile):
     line index if converged
     """
 
-    with open(log) as f:
+    with open(logfile) as f:
         lines = f.readlines()
         ermse = float(lines[-4].split()[3])
         frmse = float(lines[-4].split()[-4])
