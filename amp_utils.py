@@ -54,6 +54,65 @@ if archive:
     archive_dbs()
 '''
 
+plot_template='''
+from amp.analysis import plot_parity, plot_error
+from ase.io import read
+from amp.model import {0}
+from amp.utilities import randomize_images
+import os
+
+train_images = read('{1}', index=':')
+test_images = read('{2}', index=':')
+
+paramfile = '{3}'
+
+
+fig, train_e_data, train_f_data = plot_error(paramfile,
+                                             train_images,
+                                             model={0}.NeuralNetwork,
+                                             label='train-error',
+                                             plot_forces={4},
+                                             dblabel='{5}',
+                                             overwrite=True,
+                                             returndata=True)
+
+fig, test_e_data, test_f_data = plot_error(paramfile,
+                                           test_images,
+                                           model={0}.NeuralNetwork,
+                                           label='test-error',
+                                           plot_forces={4},
+                                           dblabel='{5}',
+                                           overwrite=True,
+                                           returndata=True)
+
+plot_parity(paramfile,
+            train_images,
+            model={0}.NeuralNetwork,
+            label='train-parity',
+            plot_forces={4},
+            dblabel={5},
+            overwrite=True,
+            returndata=False)
+
+plot_parity(paramfile,
+            test_images,
+            model={0}.NeuralNetwork,
+            label='test-parity',
+            plot_forces={4},
+            dblabel='{5}',
+            overwrite=True,
+            returndata=False)
+
+import json
+
+with open('train-error-data.json', 'wb') as f:
+    json.dump(train_e_data, f)
+
+with open('test-error-data.json', 'wb') as f:
+    json.dump(test_e_data, f)
+'''
+
+
 class cd:
 
     '''Context manager for changing directories.
@@ -167,3 +226,31 @@ def get_training_rmse(logfile):
         ermse = float(lines[-4].split()[3])
         frmse = float(lines[-4].split()[-4])
     return ermse, frmse
+
+
+def make_parity_error_plots(trainfile,
+                            testfile,
+                            paramfile='rtraining-untrained-parameters.amp',
+                            dblabel='training',
+                            plot_forces=True,
+                            submit=True,
+                            model='tflow',
+                            name='pplots'):
+    
+    with open('{0}.py'.format(name), 'w') as f:
+        f.write(plot_template.format(model,
+                                     trainfile,
+                                     testfile,
+                                     paramfile,
+                                     plot_forces,
+                                     dblabel))
+
+    if submit:
+        write_qscript(qscript='pplots-qscript',
+                      pyscript='pplots',
+                      jobname='amp-pplots',
+                      pe='smp',
+                      ncores=24,
+                      q='*@@schneider_d12chas',
+                      restart=False)
+        run_job('pplots-qscript')
