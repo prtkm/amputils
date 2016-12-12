@@ -154,3 +154,16 @@ def archive_dbs(directory='./'):
             db = FileDatabase(filename)
             db.archive()
 
+
+def get_training_rmse(logfile):
+    """
+    Get energy and force rmse from log file
+    Usually the params are "unconverged". May need to change
+    line index if converged
+    """
+
+    with open(log) as f:
+        lines = f.readlines()
+        ermse = float(lines[-4].split()[3])
+        frmse = float(lines[-4].split()[-4])
+    return ermse, frmse
