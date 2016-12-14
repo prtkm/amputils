@@ -1,3 +1,4 @@
+import os
 from subprocess import Popen, PIPE
 import glob
 
@@ -90,7 +91,7 @@ plot_parity(paramfile,
             model={0}.NeuralNetwork,
             label='train-parity',
             plot_forces={4},
-            dblabel={5},
+            dblabel='{5}',
             overwrite=True,
             returndata=False)
 
