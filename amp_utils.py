@@ -14,6 +14,20 @@ python {0}.py 1> {0}.out 2> {0}.err
 
 '''
 
+llnl_qscript_template='''#!/bin/bash
+#MSUB -A {3}
+#MSUB -l nodes={0}
+#MSUB -l walltime={5}
+#MSUB -o {1}.o
+#MSUB -N {4}
+#MSUB -j oe
+#MSUB -l partition={2}
+#MSUB -q {6}
+
+srun -N{0} -n1 python {1}.py 1> {1}.out 2> {1}.err
+'''
+
+
 # We should update this to automatically retrain with poorly fit test data
 amp_template='''from amp import Amp
 from ase.io import read
@@ -24,7 +38,7 @@ train_images = read('{1}', index=':')
 
 calc = Amp(descriptor=Gaussian(),
            model=NeuralNetwork(hiddenlayers=({2})),
-           label='{3}')
+           label='{3}', dblabel='{6}', cores={{'localhost':{5}}})
 
 calc.train(images=train_images)
 
@@ -146,7 +160,7 @@ def write_qscript(qscript='qscript',
                   q='*@@schneider_d12chas',
                   restart=True,
                   rscript='amp-restart'):  
-    
+
     with open(qscript, 'w') as f:
         f.write(qscript_template.format(pyscript,
                                         jobname,
@@ -158,10 +172,34 @@ def write_qscript(qscript='qscript',
     return
 
 
+def write_llnl_qscript(qscript='qscript',
+                       pyscript='amp-script',
+                       jobname='amp',
+                       partition='quartz',
+                       nodes=1,
+                       bank='ioncond',
+                       q='pbatch',
+                       walltime='24:00:00',
+                       restart=True,
+                       rscript='amp-restart'):  
+
+    with open(qscript, 'w') as f:
+        f.write(llnl_qscript_template.format(nodes,
+                                             pyscript,
+                                             partition,
+                                             bank,
+                                             jobname,
+                                             walltime,
+                                             q))
+        if restart:
+            f.write('python {0}.py 1> {0}.out 2> {0}.err'.format(rscript))
+    return
+
+
 def run_job(qscript='qscript'):
 
     p = Popen(['qsub', qscript], stdin=PIPE, stdout=PIPE, stderr=PIPE)
-                
+
     out, err = p.communicate()
     jobid = None
     if out == '' or err != '':
@@ -179,14 +217,15 @@ def write_amp_script(traindb,
                      model='tflow',
                      hl='10, 10',
                      label='training',
+                     dblabel='training',
                      name='amp-script',
-                     archive=False):
+                     archive=False, cores=24):
     with open('{0}.py'.format(name), 'w') as f:
         f.write(amp_template.format(model,
                                     traindb,
                                     hl,
                                     label,
-                                    archive))
+                                    archive, cores, dblabel))
     return
 
 
